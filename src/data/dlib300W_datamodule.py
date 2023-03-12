@@ -24,6 +24,7 @@ from torch.utils.data import Dataset
 
 from src.data.components.dlib300W_extract_data import FaceLandmarksDataset
 from src.data.components.dlib300_transform_data import Transforms
+from src.data.components.dlib300W_Custom_dataset import CustomDlibData
 
 class DLIB300WDataModule(LightningDataModule):
     def __init__(
@@ -53,7 +54,7 @@ class DLIB300WDataModule(LightningDataModule):
         
     def setup(self, stage: Optional[str] = None):
         
-        dataset = FaceLandmarksDataset(self.data_path, self.root_dir, Transforms())
+        dataset = CustomDlibData(self.data_path, self.root_dir)
         
         if not self.data_train and not self.data_val and not self.data_test:
             self.data_train, self.data_val, self.data_test = random_split(
@@ -96,18 +97,17 @@ class DLIB300WDataModule(LightningDataModule):
         batch_size = len(images)
         grid_size = math.sqrt(batch_size)
         grid_size = math.ceil(grid_size)
-        fig = plt.figure(figsize= (10,10))
+        fig = plt.figure(figsize=(10, 10))
         fig.subplots_adjust(left = 0, right = 1, bottom = 0, top = 1, hspace = 0.05, wspace = 0.05)
         for i in range(batch_size):
             ax = fig.add_subplot(grid_size, grid_size, i+1, xticks=[], yticks=[])
-            # plot_keypoint_image(images[i], landmarks[i])
-            
-            landmarks[i] = (landmarks[i] + 0.5 ) * 224
-            # plt.figure(figsize=(10 ,10))
-            plt.imshow(images[i].numpy().squeeze(), cmap = 'gray');
+            image, landmark = images[i], landmarks[i]
+            image = image.squeeze().permute(1,2,0)
+            plt.imshow(image)
             kpt = []
             for j in range(68):
-                kpt.append(plt.plot(landmarks[i][j][0], landmarks[i][j][1], 'go'))
+                kpt.append(plt.plot(landmark[j][0], landmark[j][1], 'g.'))
+        plt.tight_layout()
         plt.show()
     
     def teardown(self, stage: Optional[str] = None):

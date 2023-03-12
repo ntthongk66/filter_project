@@ -8,7 +8,7 @@ import torch
 from src.data.dlib300W_datamodule import DLIB300WDataModule
 
 
-@pytest.mark.parametrize("batch_size", [32, 128])
+@pytest.mark.parametrize("batch_size", [32, 64])
 def test_dlib300w_datamodule(batch_size):
     data_dir = "data/"
 

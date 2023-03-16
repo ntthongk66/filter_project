@@ -18,8 +18,8 @@ class FaceLandmarksDataset(Dataset):
 
     def __init__(
                 self, 
-                data_path = None,
-                root_dir = None,
+                data_path = 'data\ibug_300W_large_face_landmark_dataset\labels_ibug_300W_train.xml',
+                root_dir = 'data\ibug_300W_large_face_landmark_dataset',
                 transform = None):
         
         super().__init__()
@@ -67,7 +67,9 @@ class FaceLandmarksDataset(Dataset):
 # sandbox
 
 
-
+# data = FaceLandmarksDataset()
+# img, landmark = data[0]
+# print(type(landmark))
 
 
 # tree = ET.parse('data/ibug_300W_large_face_landmark_dataset/labels_ibug_300W_train.xml')

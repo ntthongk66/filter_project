@@ -87,12 +87,23 @@ class CustomDlibData(Dataset):
     def __getitem__(self, index): 
         img = cv2.imread(self.img_filenames[index])
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        landmark = self.landmarks[index]
         
         top, left, bottom, right = self.extract_bbox(index)
+        img_shape = np.array(img).shape
+        height = img_shape[0]
+        width = img_shape[1]
+        top = max(0, top) #y_min
+        left = max(0, left) #x_min
+        bottom = min(bottom, height) #y_max
+        right = min (right, width)  #x_max
+        
+        img_size = 224
+        landmark = self.landmarks[index]
+        
         if True:
             transform = A.Compose([
                 A.Crop(left, top, right, bottom),
+                A.Resize(img_size, img_size),
                 A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=45, p=0.5),
                 A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
                 ToTensorV2(),
@@ -102,59 +113,25 @@ class CustomDlibData(Dataset):
             transformed = transform(image = img, keypoints = landmark )
             img = transformed['image']
             landmark = transformed['keypoints']
+            landmark = np.array(landmark).astype('float32')
             
-            
-        # if self.img_transform:
-        #     img_Trans = A.Compose
         return img, landmark
     
-
-dataset = CustomDlibData()
-# image, landmark  =dataset[1]
-# image = image.squeeze().permute(1,2,0)
-# plt.imshow(image)
-
-
-# kpt = []
-# for i in range(68):
-#     kpt.append(plt.plot(landmark[i][0], landmark[i][1], 'g.'))
-# plt.show()
-
-# def visualize_albu(samples = 10, cols  = 5, data = dataset):
     
-
-#     rows = samples // cols
-#     figure, ax = plt.subplots(nrows=rows, ncols=cols, figsize=(12, 6))
+# def visualize(samples = 32):
+#     grid_size = math.sqrt(samples)
+#     grid_size = math.ceil(grid_size)
+#     fig = plt.figure(figsize=(10, 10))
+#     fig.subplots_adjust(left = 0, right = 1, bottom = 0, top = 1, hspace = 0.05, wspace = 0.05)
 #     for i in range(samples):
-#         image, landmark= data[i]
-#         # 128 * 128 * 3
+#         ax = fig.add_subplot(grid_size, grid_size, i+1, xticks=[], yticks=[])
+#         image, landmark = dataset[i]
 #         image = image.squeeze().permute(1,2,0)
-#         # 3* 128 * 128
+#         plt.imshow(image)
 #         kpt = []
 #         for j in range(68):
 #             kpt.append(plt.plot(landmark[j][0], landmark[j][1], 'g.'))
-#         ax.ravel()[i].imshow(image)
-#         ax.ravel()[i].set_axis_off()
-#     # plt.tight_layout()
+#     plt.tight_layout()
 #     plt.show()
-    
-# # visualize_albu()
-# #! cant not solve the keypoint 
 
-def visualize(samples = 32):
-    grid_size = math.sqrt(samples)
-    grid_size = math.ceil(grid_size)
-    fig = plt.figure(figsize=(10, 10))
-    fig.subplots_adjust(left = 0, right = 1, bottom = 0, top = 1, hspace = 0.05, wspace = 0.05)
-    for i in range(samples):
-        ax = fig.add_subplot(grid_size, grid_size, i+1, xticks=[], yticks=[])
-        image, landmark = dataset[i]
-        image = image.squeeze().permute(1,2,0)
-        plt.imshow(image)
-        kpt = []
-        for j in range(68):
-            kpt.append(plt.plot(landmark[j][0], landmark[j][1], 'g.'))
-    plt.tight_layout()
-    plt.show()
-
-visualize()
+# visualize()

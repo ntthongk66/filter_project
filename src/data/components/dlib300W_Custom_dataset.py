@@ -1,38 +1,27 @@
-import math
-import cv2
 import os
-import random 
 import numpy as np
-from PIL import Image
-import imutils
-import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw
 from math import *
-import random
 import xml.etree.ElementTree as ET 
 import torch
-import torchvision.transforms.functional as TF
-from torchvision import datasets, models, transforms
+import torchvision
 from torch.utils.data import Dataset
-
+from typing import Optional
+from albumentations import Compose
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 
 
-class CustomDlibData(Dataset):
+class DlibDataset(Dataset):
     def __init__(self, 
-                dataset_path = "data\ibug_300W_large_face_landmark_dataset\labels_ibug_300W_train.xml",
-                root_dir  = "data\ibug_300W_large_face_landmark_dataset",
-                # dataset_path,
-                # root_dir,
-                kpt_transform =None,
-                img_transform = None):
+                dataset_path: str =  None,
+                root_dir : str =  None,
+                ):
         super().__init__()
         
         self.dataset_path = dataset_path
         self.root_dir = root_dir
-        self.img_transform = img_transform
-
         
         self.img_filenames = []
         self.crops = []
@@ -44,9 +33,6 @@ class CustomDlibData(Dataset):
         '''
         construct in root
         root[2] : list of [file = 'abc.jpg', with = 123, height = 123  ]
-        
-        
-        
         '''
         
         for filename in root[2]:
@@ -85,62 +71,90 @@ class CustomDlibData(Dataset):
         return top, left, bottom, right
     
     def __getitem__(self, index): 
-        img = cv2.imread(self.img_filenames[index])
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
         top, left, bottom, right = self.extract_bbox(index)
-        img_shape = np.array(img).shape
-        height = img_shape[0]
-        width = img_shape[1]
+        original_image : Image = Image.open(self.img_filenames[index]).convert('RGB')
         
-        
-        top = max(0, top) #y_min
-        left = max(0, left) #x_min
-        bottom = min(bottom, height) #y_max
-        right = min (right, width)  #x_max
-        
-        img_size = 224
+        croped_image : Image = original_image.crop((left, top, right, bottom))
         landmark = self.landmarks[index]
+        landmark -= np.array([left, top])
+        return croped_image, landmark
         
-        if True:
-            transform = A.Compose([
-                A.Crop(left, top, right, bottom),
-                A.Resize(img_size, img_size),
-                A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=45, p=0.5),
+    
+    def annotate_image(image: Image, landmark: np.ndarray) ->Image:
+        draw = ImageDraw.Draw(image)
+        for i in range(landmark.shape[0]):
+            draw.ellipse((landmark[i][0] - 2, landmark[i][1] -2,
+                          landmark[i][0] + 2, landmark[i][1] +2), fill = (255, 0, 0))
+        return image
+    
+    
+    
+    
+    
+class TransformDataset(Dataset):
+    def __init__(self, dataset:DlibDataset, transform: Optional[Compose] = None ):
+        self.dataset = dataset
+        if transform is not None:
+            self.transform = transform
+        else:
+            self.transform = A.Compose([
+                A.Resize(224,224),
+                # A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=45, p=0.5),
                 A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
                 ToTensorV2(),
-            ]
-            , keypoint_params= A.KeypointParams(format= 'xy', remove_invisible= False, angle_in_degrees = True )    )
-            
-            transformed = transform(image = img, keypoints = landmark )
-            img = transformed['image']
-            landmark = transformed['keypoints']
-            landmark = np.array(landmark).astype('float32')
-            
-            img = np.clip(img, 0, 1)
-            # rescale img to [0...1]
-            
-        return img, landmark
-    
-    
-dataset = CustomDlibData()
-    
-_, landmark = dataset[0]
-print()
-# def visualize(samples = 32):
-#     grid_size = math.sqrt(samples)
-#     grid_size = math.ceil(grid_size)
-#     fig = plt.figure(figsize=(10, 10))
-#     fig.subplots_adjust(left = 0, right = 1, bottom = 0, top = 1, hspace = 0.05, wspace = 0.05)
-#     for i in range(samples):
-#         ax = fig.add_subplot(grid_size, grid_size, i+1, xticks=[], yticks=[])
-#         image, landmark = dataset[i]
-#         image = image.squeeze().permute(1,2,0)
-#         plt.imshow(image)
-#         kpt = []
-#         for j in range(68):
-#             kpt.append(plt.plot(landmark[j][0], landmark[j][1], 'g.'))
-#     plt.tight_layout()
-#     plt.show()
+            ])
 
-# visualize()
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, index):
+        image, landmark = self.dataset[index]
+        image = np.array(image)
+        transformed =  self.transform(
+            image = image, keypoints = landmark
+        )
+        image, landmark = transformed["image"], transformed["keypoints"]
+        _, height, width = image.shape 
+        landmark = landmark / np.array([width, height]) -0.5
+        return image, landmark.astype(np.float32)
+    
+    @staticmethod
+    def annotate_tensor(image: torch.tensor, landmark: np.ndarray) -> Image:
+        IMG_MEAN = [0.485, 0.456, 0.406]
+        IMG_STD = [0.229, 0.224, 0.225]
+        
+        def denormalize(x, mean = IMG_MEAN, std = IMG_STD) ->torch.Tensor:
+            #3, H, W, B
+            
+            ten = x.clone().permute(1, 2, 3, 0)
+            #'.clone()' make a copy of original image
+            for t, m, s in zip(ten, mean, std):
+                t.mul_(s).add_(m)
+            #B, 3, H, W
+            #clamp here like clip in np 
+            return torch.clamp(ten, 0, 1).permute(3, 0, 1, 2)
+        
+        image_denormalized = denormalize(image)
+        images_to_save = []
+        for lm, img in zip(landmark, image_denormalized):
+            img = img.permute(1, 2, 0).numpy()*255
+            h, w, _ = img.shape
+            lm = (lm + 0.5) * np.array([w, h]) #convert to image pixel coordinate
+            
+            img = DlibDataset.annotate_image(Image.fromarray(img.astype(np.uint8)), lm)
+            images_to_save.append(torchvision.transforms.ToTensor()(img))
+            
+        return torch.stack(images_to_save)
+                
+# dataset = DlibDataset()
+# dataset = TransformDataset(dataset)
+    
+# cropped_img, landmark = dataset[0]
+# print(landmark)
+# plt.imshow(cropped_img)
+# plt.show()
+
+# image_annotated = DlibDataset.annotate_image(cropped_img, landmark)
+# plt.imshow(image_annotated)
+# plt.show()

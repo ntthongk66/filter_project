@@ -1,6 +1,21 @@
 _target_: src.data.dlib300W_datamodule.DLIB300WDataModule
-data_dir: ${paths.data_dir}
-batch_size: 32 # default is 128
-train_val_split: [5_666, 1_000]
+
+defaults:
+  - transform_train: default.yaml
+  - transform_val:   default.yaml
+
+data_dir: data/ibug_300W_large_face_landmark_dataset
+batch_size: 16 # default is 128
+train_val_test_split: [5_666, 1_000]
 num_workers: 0
 pin_memory: False
+
+data_train: 
+  _target_: src.data.components.dlib300W_Custom_dataset.DlibDataset
+  dataset_path: data\ibug_300W_large_face_landmark_dataset\labels_ibug_300W_train.xml
+  root_dir: data\ibug_300W_large_face_landmark_dataset
+
+data_test:
+  _target_: src.data.components.dlib300W_Custom_dataset.DlibDataset
+  dataset_path: data\ibug_300W_large_face_landmark_dataset\labels_ibug_300W_test.xml
+  root_dir: data\ibug_300W_large_face_landmark_dataset

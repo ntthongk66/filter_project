@@ -18,7 +18,7 @@ class DLIB300WDataModule(LightningDataModule):
         data_dir: str = "data/",
         data_path = "data\ibug_300W_large_face_landmark_dataset\labels_ibug_300W_train.xml",
         root_dir  = "data\ibug_300W_large_face_landmark_dataset",
-        train_val_test_split: Tuple[int, int, int] = (5000, 1000, 666),
+        train_val_split: Tuple[int, int] = (5666, 1000),
         batch_size = 32,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -43,9 +43,9 @@ class DLIB300WDataModule(LightningDataModule):
         dataset = CustomDlibData(self.data_path, self.root_dir)
         
         if not self.data_train and not self.data_val and not self.data_test:
-            self.data_train, self.data_val, self.data_test = random_split(
+            self.data_train, self.data_val = random_split(
                 dataset= dataset,
-                lengths=self.hparams.train_val_test_split,
+                lengths=self.hparams.train_val_split,
                 generator=torch.Generator().manual_seed(42),
             )
             

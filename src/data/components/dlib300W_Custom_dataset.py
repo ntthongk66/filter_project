@@ -92,6 +92,8 @@ class CustomDlibData(Dataset):
         img_shape = np.array(img).shape
         height = img_shape[0]
         width = img_shape[1]
+        
+        
         top = max(0, top) #y_min
         left = max(0, left) #x_min
         bottom = min(bottom, height) #y_max
@@ -115,9 +117,16 @@ class CustomDlibData(Dataset):
             landmark = transformed['keypoints']
             landmark = np.array(landmark).astype('float32')
             
+            img = np.clip(img, 0, 1)
+            # rescale img to [0...1]
+            
         return img, landmark
     
     
+dataset = CustomDlibData()
+    
+_, landmark = dataset[0]
+print()
 # def visualize(samples = 32):
 #     grid_size = math.sqrt(samples)
 #     grid_size = math.ceil(grid_size)

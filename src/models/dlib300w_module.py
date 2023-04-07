@@ -91,7 +91,7 @@ class DlibLiModule(LightningModule):
 
         # update and log metrics
         self.test_loss(loss)
-        self.test_acc(preds, targets)
+        self.test_mae(preds, targets)
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/mae", self.test_mae, on_step=False, on_epoch=True, prog_bar=True)
 

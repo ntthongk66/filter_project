@@ -122,6 +122,7 @@ if __name__ == "__main__":
         # dataset = data()
         print("dataset", len(dataset))
         image, landmarks = dataset[100]
+        print(type(landmarks[0][1]))
         print("image", image.size, "landmarks", landmarks.shape)
         annotated_image = DlibDataset.annotate_image(image, landmarks)
         annotated_image.save(output_path / "test_dataset_result.png")
@@ -153,7 +154,7 @@ if __name__ == "__main__":
     @hydra.main(version_base = "1.3", config_path=config_path, config_name="dlib300w.yaml")
     def main(cfg: DictConfig):
         test_dataset(cfg)
-        test_datamodule(cfg)
+        # test_datamodule(cfg)
     
     main()    
     # _ = DLIB300WDataModule()

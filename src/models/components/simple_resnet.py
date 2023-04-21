@@ -7,7 +7,7 @@ available_models = list_models()
 class SimpleResnet(nn.Module):
     def __init__(
         self,
-        model_name: str = "resnet18",
+        model_name: str = "resnet50",
         weights: str = "DEFAULT",
         output_shape: list = [68, 2],
     ):

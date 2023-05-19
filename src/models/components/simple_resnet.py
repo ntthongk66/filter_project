@@ -7,17 +7,17 @@ available_models = list_models()
 class SimpleResnet(nn.Module):
     def __init__(
         self,
-        model_name: str = "resnet50",
+        model_name: str = "mobilenet_v2",
         weights: str = "DEFAULT",
         output_shape: list = [68, 2],
     ):
         super().__init__()
         model = get_model(model_name, weights = weights)
-        supported = False
+        supported = True
         if hasattr(model, 'fc'):
             num_ftrs = model.fc.in_features
             model.fc = nn.Linear(num_ftrs, output_shape[0]*output_shape[1])
-            supported = True
+            supported = False
         elif hasattr(model,'heads'):
             heads = getattr(model, 'heads')
             if hasattr(heads, 'heads'):

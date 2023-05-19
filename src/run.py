@@ -98,39 +98,39 @@ import csv
 
 filters_config = {
     'anonymous':
-        [{'path': "src/FaceMesh/filters/anonymous.png",
-          'anno_path': "src/FaceMesh/filters/anonymous_annotations.csv",
+        [{'path': "src/filter/image/anonymous.png",
+          'anno_path': "src/filter/keypoint_list/anonymous_annotations.csv",
           'morph': True, 'animated': False, 'has_alpha': True}],
-    # 'anime':
-    #     [{'path': "filters/anime.png",
-    #       'anno_path': "filters/anime_annotations.csv",
-    #       'morph': True, 'animated': False, 'has_alpha': True}],
-    # 'dog':
-    #     [{'path': "filters/dog-ears.png",
-    #       'anno_path': "filters/dog-ears_annotations.csv",
-    #       'morph': False, 'animated': False, 'has_alpha': True},
-    #      {'path': "filters/dog-nose.png",
-    #       'anno_path': "filters/dog-nose_annotations.csv",
-    #       'morph': False, 'animated': False, 'has_alpha': True}],
-    # 'cat':
-    #     [{'path': "filters/cat-ears.png",
-    #       'anno_path': "filters/cat-ears_annotations.csv",
-    #       'morph': False, 'animated': False, 'has_alpha': True},
-    #      {'path': "filters/cat-nose.png",
-    #       'anno_path': "filters/cat-nose_annotations.csv",
-    #       'morph': False, 'animated': False, 'has_alpha': True}],
-    # 'jason-joker':
-    #     [{'path': "filters/jason-joker.png",
-    #       'anno_path': "filters/jason-joker_annotations.csv",
-    #       'morph': True, 'animated': False, 'has_alpha': True}],
-    # 'gold-crown':
-    #     [{'path': "filters/gold-crown.png",
-    #       'anno_path': "filters/gold-crown_annotations.csv",
-    #       'morph': False, 'animated': False, 'has_alpha': True}],
-    # 'flower-crown':
-    #     [{'path': "filters/flower-crown.png",
-    #       'anno_path': "filters/flower-crown_annotations.csv",
-    #       'morph': False, 'animated': False, 'has_alpha': True}],
+    'anime':
+        [{'path': "src/filter/image/anime.png",
+          'anno_path': "src/filter/keypoint_list/anime_annotations.csv",
+          'morph': True, 'animated': False, 'has_alpha': True}],
+    'dog':
+        [{'path': "src/filter/image/dog-ears.png",
+          'anno_path': "src/filter/keypoint_list/dog-ears_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True},
+         {'path': "src/filter/image/dog-nose.png",
+          'anno_path': "src/filter/keypoint_list/dog-nose_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True}],
+    'cat':
+        [{'path': "src/filter/image/cat-ears.png",
+          'anno_path': "src/filter/keypoint_list/cat-ears_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True},
+         {'path': "src/filter/image/cat-nose.png",
+          'anno_path': "src/filter/keypoint_list/cat-nose_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True}],
+    'jason-joker':
+        [{'path': "src/filter/image/jason-joker.png",
+          'anno_path': "src/filter/keypoint_list/jason-joker_annotations.csv",
+          'morph': True, 'animated': False, 'has_alpha': True}],
+    'gold-crown':
+        [{'path': "src/filter/image/gold-crown.png",
+          'anno_path': "src/filter/keypoint_list/gold-crown_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True}],
+    'flower-crown':
+        [{'path': "src/filter/image/flower-crown.png",
+          'anno_path': "src/filter/keypoint_list/flower-crown_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True}],
 }
 
 def load_filter_img(img_path, has_alpha):
@@ -175,7 +175,7 @@ def find_convex_hull(points):
     return hull, hullIndex
 
 
-def load_filter(filter_name="anonymous"):
+def load_filter(filter_name="anime"):
 
     filters = filters_config[filter_name]
 
@@ -257,11 +257,18 @@ while cap.isOpened():
                 h = face_box[j][3] - face_box[j][1]
                 w = face_box[j][2] - face_box[j][0]
                 
+                kpt_69 = np.array([[face_box[j][0], face_box[j][1]]])
+                kpt_70 = np.array([[face_box[j][0]+w, face_box[j][1]]])
+                # kpt_added = np.append(kpt_69, kpt_70, axis= 0)
+                
                 landmarks = resnet50(transform(image = face)["image"].unsqueeze(0))[0]
                 landmarks = (landmarks + 0.5) * torch.Tensor([w, h])
                 x = torch.tensor([face_box[j][0],face_box[j][1]])
                 landmarks = torch.add(landmarks, x)
                 landmarks = landmarks.detach().numpy()
+                
+                landmarks = np.append(landmarks,kpt_69, axis=0)
+                landmarks = np.append(landmarks,kpt_70, axis=0)
                 
                 for idx, filter in enumerate(filters):
 
@@ -329,14 +336,29 @@ while cap.isOpened():
 
                     frame = output = np.uint8(output)
                 
-                print(type(landmarks))
+                
+                
+                # print(type(landmarks))
                 # print(landmarks.shape) #[68, 2]
                 # frame = paste_to_img(frame_bgr=frame, top_left=landmarks[17], top_right=landmarks[26])
                 if(visualize_kpt):
                     for i in range (landmarks.shape[0]):
                         frame = cv2.circle(frame, (int(landmarks[i, 0] ),int(landmarks[i, 1] )), radius=1, color=(255, 255, 0), thickness= 1)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        keypressed = cv2.waitKey(1) & 0xFF
+        if keypressed == ord('q'):
             break
+        elif keypressed == ord('f'):
+            print('f')
+            try:
+                filters, multi_filter_runtime = load_filter(next(iter_filter_keys))
+                print('try')
+            except:
+                iter_filter_keys = iter(filters_config.keys())
+                filters, multi_filter_runtime = load_filter(next(iter_filter_keys))
+                print('f_except')
+                
+        count +=1
+        # print(count)
     else:
         break
 

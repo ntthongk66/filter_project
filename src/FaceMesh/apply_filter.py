@@ -343,9 +343,11 @@ while True:
         elif keypressed == ord('f'):
             try:
                 filters, multi_filter_runtime = load_filter(next(iter_filter_keys))
+                print('try')
             except:
                 iter_filter_keys = iter(filters_config.keys())
                 filters, multi_filter_runtime = load_filter(next(iter_filter_keys))
+                print('except')
 
         count += 1
 

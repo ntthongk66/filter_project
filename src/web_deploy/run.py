@@ -9,7 +9,8 @@ from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
 import pyrootutils
 
-# __file__ = '/Users/tiendzung/Downloads/facial_landmarks-wandb/notebooks/explore_dlib.ipynb'
+# import faceBlendCommon as fbc
+
 path = pyrootutils.find_root(
     search_from=__file__, indicator=".project-root")
 config_path = str(path / "configs" / "model")
@@ -92,7 +93,7 @@ def paste_to_img( frame_bgr  ,top_left, top_right, sung_glass_img = sung_glass):
 
 ########################################SECOND VER OF FILTER##############################
 import mediapipe as mp
-import FaceMesh.faceBlendCommon as fbc
+import src.FaceMesh.faceBlendCommon as fbc
 import csv
 
 
@@ -270,6 +271,35 @@ while cap.isOpened():
                 landmarks = np.append(landmarks,kpt_69, axis=0)
                 landmarks = np.append(landmarks,kpt_70, axis=0)
                 
+                
+                #### Optical Flow ###
+                
+                if isFirstFrame:
+                    landmarks2Prev = np.array(landmarks, np.float32)
+                    img2GrayPrev = np.copy(img2Gray)
+                    isFirstFrame = False
+                
+                lk_params = dict(winSize=(101, 101), maxLevel=15,
+                         criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 20, 0.001))
+                
+                landmarks2Next, st, err = cv2.calcOpticalFlowPyrLK(img2GrayPrev, img2Gray, landmarks2Prev,
+                                                        np.array(landmarks, np.float32),
+                                                        **lk_params)
+                
+                # Final landmark points are a weighted average of detected landmarks and tracked landmarks
+                
+                for k in range(0, len(landmarks)):
+                    d = cv2.norm(np.array(landmarks[k]) - landmarks2Next[k])
+                    alpha = math.exp(-d * d / sigma)
+                    landmarks[k] = (1 - alpha) * np.array(landmarks[k]) + alpha * landmarks2Next[k]
+                    landmarks[k] = fbc.constrainPoint(landmarks[k], frame.shape[1], frame.shape[0])
+                    landmarks[k] = (int(landmarks[k][0]), int(landmarks[k][1]))
+
+                # Update variables for next pass
+                landmarks2Prev = np.array(landmarks, np.float32)
+                img2GrayPrev = img2Gray
+                
+                ### End Optical Flow ###
                 for idx, filter in enumerate(filters):
 
                     filter_runtime = multi_filter_runtime[idx]
@@ -366,5 +396,5 @@ while cap.isOpened():
     
 cap.release()
 cv2.destroyAllWindows()
-for i in range(30):
-    cv2.waitKey(1)
+# for i in range(30):
+#     cv2.waitKey(1)
